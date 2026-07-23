@@ -1409,7 +1409,26 @@ async function startServer() {
       if (success) {
         res.json({ success: true, message: "Conexão estabelecida com sucesso!" });
       } else {
-        res.json({ success: false, error: errorMsg || "Não foi possível conectar com as credenciais informadas." });
+        let userFriendlyError = errorMsg || "Não foi possível conectar com as credenciais informadas.";
+        const lowerErr = userFriendlyError.toLowerCase();
+        if (lowerErr.includes("permission") || lowerErr.includes("permissão") || lowerErr.includes("insufficient")) {
+          userFriendlyError = `Regras do Firestore bloqueando acesso (Missing or insufficient permissions).\n\n` +
+            `✓ O seu Projeto ('${config.projectId}') e a API Key estão corretos e respondendo!\n` +
+            `✗ Porém, no Console do Firebase, as Regras de Segurança (Firestore Security Rules) do banco de dados estão travadas.\n\n` +
+            `Como resolver em 1 minuto:\n` +
+            `1. Acesse: https://console.firebase.google.com/project/${config.projectId}/firestore/rules\n` +
+            `2. Edite as regras para permitir acesso:\n` +
+            `   rules_version = '2';\n` +
+            `   service cloud.firestore {\n` +
+            `     match /databases/{database}/documents {\n` +
+            `       match /{document=**} {\n` +
+            `         allow read, write: if true;\n` +
+            `       }\n` +
+            `     }\n` +
+            `   }\n` +
+            `3. Clique no botão "Publicar" (Publish).`;
+        }
+        res.json({ success: false, error: userFriendlyError });
       }
     } catch (error: any) {
       res.json({ success: false, error: error?.message || "Erro durante o teste de conexão" });
